@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>气象模型后端监控中心 | 智感引擎</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #070B14;
+            min-height: 100vh;
+            color: #EFF3FC;
+            padding: 1.5rem;
+            position: relative;
+        }
+
+        /* 动态背景纹理 */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at 30% 40%, rgba(66, 153, 225, 0.1), transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(#2c3a5e 0.5px, transparent 0.5px);
+            background-size: 28px 28px;
+            opacity: 0.2;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 头部区域 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+            border-bottom: 1px solid rgba(90, 107, 255, 0.3);
+            padding-bottom: 0.8rem;
+        }
+        .title-section h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #FFFFFF, #A5B4FF);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+        }
+        .title-section p {
+            color: #8E9BB0;
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+        .status-badge {
+            background: rgba(30, 33, 41, 0.8);
+            backdrop-filter: blur(8px);
+            border-radius: 40px;
+            padding: 0.4rem 1.2rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid rgba(90, 107, 255, 0.4);
+        }
+
+        /* 指标卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: rgba(16, 20, 30, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 28px;
+            padding: 1.2rem;
+            border: 1px solid rgba(90, 107, 255, 0.2);
+            transition: all 0.2s;
+        }
+        .stat-card:hover {
+            border-color: #5A6BFF;
+            transform: translateY(-2px);
+        }
+        .stat-icon { font-size: 1.6rem; color: #7A84FF; margin-bottom: 0.5rem; }
+        .stat-value { font-size: 2.2rem; font-weight: 800; color: #FFFFFF; line-height: 1.2; }
+        .stat-label { font-size: 0.7rem; text-transform: uppercase; color: #9AA4C2; margin-top: 0.2rem; }
+        .stat-sub { font-size: 0.65rem; color: #5F6A85; margin-top: 0.3rem; }
+
+        /* 双栏布局 */
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 1.8rem;
+            margin-bottom: 1.8rem;
+        }
+        @media (max-width: 880px) {
+            .two-columns { grid-template-columns: 1fr; }
+        }
+
+        /* 玻璃面板 */
+        .glass-panel {
+            background: rgba(12, 16, 26, 0.65);
+            backdrop-filter: blur(16px);
+            border-radius: 32px;
+            border: 1px solid rgba(90, 107, 255, 0.25);
+            padding: 1.5rem;
+        }
+
+        /* 日志列表 */
+        .log-container {
+            max-height: 320px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+        }
+        .log-entry {
+            padding: 0.6rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .log-time { color: #6C7CFF; min-width: 75px; }
+        .log-method { 
+            background: rgba(90,107,255,0.2); 
+            padding: 0.1rem 0.4rem; 
+            border-radius: 12px; 
+            font-weight: 600;
+            min-width: 55px;
+            text-align: center;
+        }
+        .log-path { color: #B9C4FF; word-break: break-all; }
+        .log-status { 
+            background: #1E293B; 
+            padding: 0.1rem 0.4rem; 
+            border-radius: 12px;
+            min-width: 45px;
+            text-align: center;
+        }
+        .status-ok { color: #4ade80; }
+        .status-error { color: #ff6b6b; }
+
+        /* 模型详情 */
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.7rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .info-label { color: #9CA3C0; font-size: 0.8rem; }
+        .info-value { font-family: monospace; background: rgba(0,0,0,0.3); padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; }
+
+        .btn-refresh {
+            background: linear-gradient(95deg, #5A6BFF, #7A84FF);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 40px;
+            font-weight: 500;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .btn-refresh:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.05);
+        }
+        .badge-online {
+            background: #22c55e20;
+            color: #4ade80;
+            padding: 0.2rem 0.8rem;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            border: 1px solid #4ade8040;
+        }
+        .badge-offline {
+            background: #ff555520;
+            color: #ff8888;
+            padding: 0.2rem 0.8rem;
+            border-radius: 30px;
+            font-size: 0.7rem;
+        }
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.65rem;
+            color: #5B6A88;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 1rem;
+        }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .api-url {
+            background: #0A0E18;
+            padding: 0.2rem 0.8rem;
+            border-radius: 24px;
+            font-family: monospace;
+            font-size: 0.7rem;
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <div class="header">
+        <div class="title-section">
+            <h1><i class="fas fa-chart-line"></i> 气象模型后端监控中心</h1>
+            <p>实时推理引擎 · 性能看板 · 服务诊断</p>
+        </div>
+        <div class="status-badge" id="serviceStatusBadge">
+            <i class="fas fa-sync-alt fa-spin"></i> 检测中...
+        </div>
+    </div>
+
+    <!-- 核心指标 -->
+    <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon"><i class="fas fa-cloud-upload-alt"></i></div><div class="stat-value" id="totalRequests">0</div><div class="stat-label">总请求数</div><div class="stat-sub">自监控启动</div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="fas fa-check-circle"></i></div><div class="stat-value" id="successRate">--</div><div class="stat-label">成功率</div><div class="stat-sub">最近50次</div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="fas fa-stopwatch"></i></div><div class="stat-value" id="avgLatency">--</div><div class="stat-label">平均延迟 (ms)</div><div class="stat-sub">实时推理</div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="fas fa-microchip"></i></div><div class="stat-value" id="modelStatus">--</div><div class="stat-label">模型加载状态</div><div class="stat-sub">ONNX / PyTorch</div></div>
+    </div>
+
+    <div class="two-columns">
+        <!-- 左侧：请求日志 + 健康检查 -->
+        <div class="glass-panel">
+            <div class="flex-between" style="margin-bottom: 1rem;">
+                <h3 style="font-weight: 600;"><i class="fas fa-history"></i> 实时请求日志</h3>
+                <button id="clearLogsBtn" style="background: none; border: none; color: #7A84FF; cursor: pointer;"><i class="fas fa-trash-alt"></i> 清空</button>
+            </div>
+            <div id="logContainer" class="log-container">
+                <div class="log-entry" style="color:#5F6A85; justify-content: center;">等待请求日志...</div>
+            </div>
+            <button id="manualCheckBtn" class="btn-refresh"><i class="fas fa-heartbeat"></i> 主动健康检查</button>
+        </div>
+
+        <!-- 右侧：模型详情 + 服务配置 -->
+        <div class="glass-panel">
+            <h3 style="margin-bottom: 1rem; font-weight: 600;"><i class="fas fa-cog"></i> 服务与模型详情</h3>
+            <div class="info-row"><span class="info-label">📡 API 端点</span><span class="info-value" id="apiEndpoint">http://localhost:8000/predict</span></div>
+            <div class="info-row"><span class="info-label">🧠 模型架构</span><span class="info-value">EfficientNet-B2</span></div>
+            <div class="info-row"><span class="info-label">📊 推理框架</span><span class="info-value">ONNX Runtime / PyTorch</span></div>
+            <div class="info-row"><span class="info-label">🏷️ 类别数量</span><span class="info-value">13 类气象</span></div>
+            <div class="info-row"><span class="info-label">⚙️ 输入尺寸</span><span class="info-value">224x224x3</span></div>
+            <div class="info-row"><span class="info-label">🎯 最佳 F1</span><span class="info-value">0.9307 (验证集)</span></div>
+            <div class="info-row"><span class="info-label">🕒 监控启动</span><span class="info-value" id="startTime">--</span></div>
+            <div class="info-row"><span class="info-label">🔌 后端地址</span><span class="info-value" id="backendHost">localhost:8000</span></div>
+            <div style="margin-top: 1rem; background: #0A0E18; border-radius: 20px; padding: 0.8rem;">
+                <div class="flex-between"><span><i class="fas fa-chart-pie"></i> 模型性能指标</span><span>F1: 0.920 | Acc: 92.96%</span></div>
+                <div class="flex-between" style="margin-top: 6px;"><span><i class="fas fa-tachometer-alt"></i> 推理速度</span><span>≈10.97ms/张 (GPU)</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 扩展监控 -->
+    <div class="glass-panel">
+        <h3 style="margin-bottom: 1rem; font-weight: 600;"><i class="fas fa-chart-simple"></i> 推理性能指标 (模拟动态)</h3>
+        <div class="stats-grid" style="grid-template-columns: repeat(3,1fr); gap: 1rem; margin-bottom: 0;">
+            <div><span style="color:#8E9BB0">P50 延迟</span><br><span id="p50Latency" style="font-size: 1.4rem; font-weight: 700;">--</span><span style="font-size:0.8rem;"> ms</span></div>
+            <div><span style="color:#8E9BB0">P95 延迟</span><br><span id="p95Latency" style="font-size: 1.4rem; font-weight: 700;">--</span><span style="font-size:0.8rem;"> ms</span></div>
+            <div><span style="color:#8E9BB0">当前 QPS</span><br><span id="currentQps" style="font-size: 1.4rem; font-weight: 700;">0</span><span style="font-size:0.8rem;"> req/s</span></div>
+        </div>
+    </div>
+    <footer>气象图像识别系统 · 后端监控面板 | 基于 FastAPI + ONNX Runtime | 数据每5秒轮询更新</footer>
+</div>
+
+<script>
+    // ---------- 配置 ----------
+    const API_BASE = 'http://localhost:8000';
+    const PREDICT_URL = `${API_BASE}/predict`;
+    const HEALTH_URL = `${API_BASE}/`;
+    
+    // 统计数据
+    let requestLogs = [];          // 存储日志 { time, method, path, status, latency }
+    let requestTimes = [];         // 存储最近延迟(ms)
+    let totalCount = 0;
+    let successCount = 0;
+    let startTimestamp = Date.now();
+    
+    // DOM 元素
+    const logContainer = document.getElementById('logContainer');
+    const totalRequestsSpan = document.getElementById('totalRequests');
+    const successRateSpan = document.getElementById('successRate');
+    const avgLatencySpan = document.getElementById('avgLatency');
+    const modelStatusSpan = document.getElementById('modelStatus');
+    const serviceStatusBadge = document.getElementById('serviceStatusBadge');
+    const p50Span = document.getElementById('p50Latency');
+    const p95Span = document.getElementById('p95Latency');
+    const currentQpsSpan = document.getElementById('currentQps');
+    const startTimeSpan = document.getElementById('startTime');
+    
+    // 辅助函数: 格式化时间
+    function formatTime() {
+        const now = new Date();
+        return `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+    }
+    
+    // 添加日志
+    function addLog(method, path, status, latency = null) {
+        const logEntry = {
+            time: formatTime(),
+            method,
+            path,
+            status,
+            latency: latency ? latency.toFixed(1) : null
+        };
+        requestLogs.unshift(logEntry);
+        if (requestLogs.length > 50) requestLogs.pop();
+        renderLogs();
+        
+        // 更新统计
+        totalCount++;
+        totalRequestsSpan.innerText = totalCount;
+        if (status >= 200 && status < 400) successCount++;
+        const rate = totalCount === 0 ? 0 : (successCount / totalCount * 100);
+        successRateSpan.innerText = rate.toFixed(1) + '%';
+        
+        if (latency) {
+            requestTimes.push(latency);
+            if (requestTimes.length > 200) requestTimes.shift();
+            const avg = requestTimes.reduce((a,b) => a + b, 0) / requestTimes.length;
+            avgLatencySpan.innerText = avg.toFixed(1);
+            // 更新百分位
+            const sorted = [...requestTimes].sort((a,b)=>a-b);
+            const p50 = sorted[Math.floor(sorted.length * 0.5)] || 0;
+            const p95 = sorted[Math.floor(sorted.length * 0.95)] || 0;
+            p50Span.innerText = p50.toFixed(1);
+            p95Span.innerText = p95.toFixed(1);
+            // 简单 QPS: 最近10秒请求数
+            const nowSec = Date.now() / 1000;
+            const recent = requestTimes.filter((_, idx) => {
+                const timeIdx = requestLogs[idx] ? requestLogs[idx].time : null;
+                if (!timeIdx) return false;
+                const logSec = (new Date(`1970/01/01 ${timeIdx}`)).getTime() / 1000;
+                return (nowSec - logSec) <= 10;
+            }).length;
+            currentQpsSpan.innerText = (recent / 10).toFixed(1);
+        }
+    }
+    
+    // 渲染日志
+    function renderLogs() {
+        if (requestLogs.length === 0) {
+            logContainer.innerHTML = `<div class="log-entry" style="color:#5F6A85; justify-content: center;">暂无请求日志，上传图片或执行健康检查</div>`;
+            return;
+        }
+        logContainer.innerHTML = requestLogs.map(log => {
+            let statusClass = (log.status >= 200 && log.status < 400) ? 'status-ok' : 'status-error';
+            let latencyText = log.latency ? `${log.latency}ms` : '';
+            return `
+                <div class="log-entry">
+                    <span class="log-time">${log.time}</span>
+                    <span class="log-method">${log.method}</span>
+                    <span class="log-path">${log.path}</span>
+                    <span class="log-status ${statusClass}">${log.status}</span>
+                    <span style="margin-left: auto; font-size:0.7rem; color:#7A84FF;">${latencyText}</span>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // 健康检查 (GET /)
+    async function healthCheck() {
+        const start = performance.now();
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+            const response = await fetch(HEALTH_URL, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            const latency = performance.now() - start;
+            addLog('GET', '/', response.status, latency);
+            if (response.ok) {
+                serviceStatusBadge.innerHTML = '<i class="fas fa-check-circle"></i> 服务在线 · 正常';
+                serviceStatusBadge.style.borderColor = '#4ade80';
+                const data = await response.json();
+                modelStatusSpan.innerText = data.status === 'running' ? '✅ 已加载' : '⚠️ 未知';
+                return true;
+            } else {
+                serviceStatusBadge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 服务异常';
+                modelStatusSpan.innerText = '❌ 响应错误';
+                return false;
+            }
+        } catch (err) {
+            const latency = performance.now() - start;
+            addLog('GET', '/', 503, latency);
+            serviceStatusBadge.innerHTML = '<i class="fas fa-ban"></i> 后端离线 · 未连接';
+            modelStatusSpan.innerText = '❌ 无法连接';
+            return false;
+        }
+    }
+    
+    // 主动预测测试 (发送测试图片模拟? 但不依赖真实文件，只是探测 POST 是否正常)
+    // 为了监控面板，我们发送一个最小的合法图片请求（base64空图避免真实图片？但后端需要文件，我们可用一个很小的模拟图片）
+    // 更优雅: 直接执行一次空文件检查? 后端会返回422, 但我们可记录状态. 为了真实探测，用一个小尺寸合法图片。
+    // 这里我们采用最简单方式：模拟一个合法的图片文件（1x1 像素 PNG）
+    async function testPredictEndpoint() {
+        // 创建一个 1x1 像素的 PNG 图片二进制数据 (极小合法图片)
+        const minimalPngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+        const blob = await (await fetch(`data:image/png;base64,${minimalPngBase64}`)).blob();
+        const formData = new FormData();
+        formData.append('file', blob, 'test.png');
+        const start = performance.now();
+        try {
+            const response = await fetch(PREDICT_URL, { method: 'POST', body: formData });
+            const latency = performance.now() - start;
+            addLog('POST', '/predict', response.status, latency);
+            if (response.ok) {
+                const resJson = await response.json();
+                console.log('[监控] 预测接口正常', resJson);
+            }
+        } catch (err) {
+            const latency = performance.now() - start;
+            addLog('POST', '/predict', 0, latency);
+        }
+    }
+    
+    // 主动健康检查 + 预测探测
+    async function fullHealthCheck() {
+        await healthCheck();
+        // 可选: 每隔一段时间尝试预测探测，但避免过度请求，可每30秒执行一次
+    }
+    
+    // 清空日志
+    document.getElementById('clearLogsBtn').addEventListener('click', () => {
+        requestLogs = [];
+        renderLogs();
+        // 不清除统计数据，但可以重置计数器？为了体验，只清日志
+    });
+    
+    // 手动触发检查按钮
+    document.getElementById('manualCheckBtn').addEventListener('click', async () => {
+        await fullHealthCheck();
+        // 额外加一次预测探测
+        await testPredictEndpoint();
+    });
+    
+    // 启动时显示开始时间
+    startTimeSpan.innerText = new Date().toLocaleTimeString();
+    
+    // 初始加载: 执行健康检查
+    (async function init() {
+        await fullHealthCheck();
+        // 启动定时轮询 (每8秒刷新健康状态)
+        setInterval(async () => {
+            await healthCheck();
+        }, 8000);
+        // 每30秒测试一次预测接口（保持活跃和日志监控）
+        setInterval(async () => {
+            await testPredictEndpoint();
+        }, 30000);
+        // 前端模拟一些展示：为了演示效果，可以生成几个示意日志，但不需要。保持干净
+    })();
+    
+    // 模拟一些性能指标的动态微调 (由于后端未提供实时指标，我们用已有请求日志计算)
+    setInterval(() => {
+        if (requestTimes.length > 0) {
+            const sorted = [...requestTimes].sort((a,b)=>a-b);
+            const p50 = sorted[Math.floor(sorted.length * 0.5)] || 0;
+            const p95 = sorted[Math.floor(sorted.length * 0.95)] || 0;
+            p50Span.innerText = p50.toFixed(1);
+            p95Span.innerText = p95.toFixed(1);
+            const avg = requestTimes.reduce((a,b)=>a+b,0) / requestTimes.length;
+            avgLatencySpan.innerText = avg.toFixed(1);
+        }
+        // QPS 计算
+        const nowSec = Date.now() / 1000;
+        const recentCount = requestLogs.filter(log => {
+            const [h,m,s] = log.time.split(':');
+            const logSec = new Date().setHours(h,m,s) / 1000;
+            return (nowSec - logSec) <= 10;
+        }).length;
+        currentQpsSpan.innerText = (recentCount / 10).toFixed(1);
+    }, 2000);
+</script>
+</body>
+</html>

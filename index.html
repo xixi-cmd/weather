@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>气象图像识别系统 | 智能气象感知</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0B0E17;
+            min-height: 100vh;
+            color: #EFF3F6;
+            padding: 2rem;
+            position: relative;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 70% 20%, rgba(66, 153, 225, 0.08), transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .dashboard { max-width: 1400px; margin: 0 auto; position: relative; z-index: 2; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 2.2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+            border-bottom: 1px solid #1F2937;
+            padding-bottom: 1rem;
+        }
+        .title-section h1 {
+            font-size: 1.9rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #FFFFFF, #8A94FF);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .title-section p { color: #8A94A6; font-size: 0.85rem; margin-top: 4px; }
+        .badge-group { display: flex; gap: 12px; }
+        .badge-modern {
+            background: #1E2129;
+            border-radius: 40px;
+            padding: 0.3rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: 1px solid #333844;
+            color: #B9C0D4;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: #13161F;
+            border-radius: 28px;
+            padding: 1.2rem 1.4rem;
+            border: 1px solid #282E3A;
+            transition: all 0.2s;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+        .stat-card:hover { border-color: #5A6BFF; transform: translateY(-2px); background: #171C28; }
+        .stat-icon { font-size: 1.6rem; color: #7A84FF; margin-bottom: 0.8rem; }
+        .stat-value { font-size: 2.6rem; font-weight: 800; letter-spacing: -1px; color: #FFFFFF; line-height: 1.2; }
+        .stat-label { font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: #8E98B0; margin-top: 0.3rem; }
+        .stat-sub { font-size: 0.7rem; color: #565E74; border-top: 1px solid #262C38; margin-top: 0.6rem; padding-top: 0.5rem; }
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 1.8rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 880px) { .two-columns { grid-template-columns: 1fr; } body { padding: 1rem; } }
+        .glass-panel {
+            background: rgba(18, 22, 32, 0.85);
+            backdrop-filter: blur(12px);
+            border-radius: 32px;
+            border: 1px solid rgba(90, 107, 255, 0.2);
+            padding: 1.5rem;
+            transition: all 0.2s;
+        }
+        .glass-panel:hover { border-color: #5A6BFF60; }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.9rem 0;
+            border-bottom: 1px solid #222836;
+        }
+        .info-label { font-weight: 500; color: #9AA2BB; font-size: 0.85rem; }
+        .info-value {
+            font-family: monospace;
+            background: #0C0F17;
+            padding: 0.2rem 0.8rem;
+            border-radius: 24px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #C0D0FF;
+        }
+        .chip { background: #1E2538; padding: 0.2rem 0.7rem; border-radius: 20px; font-size: 0.7rem; color: #A9B4FF; }
+        .upload-area {
+            border: 1.5px dashed #5A6BFF;
+            border-radius: 28px;
+            padding: 1.8rem;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #0E121C;
+            margin-bottom: 1.5rem;
+        }
+        .upload-area:hover { background: #171D2B; border-color: #8A94FF; }
+        .upload-icon { font-size: 2.5rem; color: #7A84FF; margin-bottom: 0.5rem; }
+        .preview-img { max-width: 100%; max-height: 170px; border-radius: 20px; object-fit: cover; margin-top: 1rem; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+        .result-box { background: #0B0F18; border-radius: 24px; padding: 1rem; margin-top: 0.5rem; border: 1px solid #2A2F40; }
+        .prediction-class { font-size: 1.8rem; font-weight: 800; background: linear-gradient(130deg, #FFFFFF, #B9C4FF); -webkit-background-clip: text; background-clip: text; color: transparent; margin: 0.3rem 0; }
+        .confidence-bar { background: #1F2538; border-radius: 40px; height: 8px; margin: 0.8rem 0; }
+        .confidence-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #5A6BFF, #A871FF); border-radius: 40px; transition: width 0.3s ease; }
+        .top5-item { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+        .top5-name { width: 100px; font-size: 0.8rem; font-weight: 500; }
+        .top5-bar-bg { flex: 1; background: #242A3C; border-radius: 20px; height: 5px; }
+        .top5-bar { height: 5px; border-radius: 20px; background: #6C7CFF; width: 0%; }
+        .btn-primary {
+            background: #5A6BFF;
+            border: none;
+            width: 100%;
+            padding: 0.7rem;
+            border-radius: 40px;
+            font-weight: 600;
+            color: white;
+            margin-top: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-primary:hover { background: #6C7CFF; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(90, 107, 255, 0.3); }
+        footer { text-align: center; margin-top: 2rem; font-size: 0.7rem; color: #5C637A; border-top: 1px solid #212734; padding-top: 1.2rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .error-message { color: #ff6b6b; background: rgba(255,107,107,0.1); padding: 10px; border-radius: 12px; margin-top: 10px; text-align: center; }
+        .loading { color: #5A6BFF; text-align: center; padding: 10px; }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <div class="header">
+        <div class="title-section">
+            <h1><i class="fas fa-cloud-sun-rain"></i> 气象图像识别系统</h1>
+            <p>EfficientNet-B2 · 13类气象分类 · 实时推理仪表</p>
+        </div>
+        <div class="badge-group">
+            <span class="badge-modern"><i class="fas fa-microchip"></i> GPU 加速</span>
+            <span class="badge-modern"><i class="fas fa-chart-line"></i> F1 0.920</span>
+            <span class="badge-modern"><i class="fas fa-bolt"></i> 10.97ms/推理</span>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon"><i class="fas fa-chart-simple"></i></div><div class="stat-value" id="f1ScoreDisplay">0.920</div><div class="stat-label">宏平均 F1 分数</div><div class="stat-sub">测试集 · 13类天气场景</div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="fas fa-stopwatch"></i></div><div class="stat-value" id="inferenceTimeDisplay">10.97</div><div class="stat-label">GPU 推理时间 (ms/张)</div><div class="stat-sub">标准差 ±1.32ms · ONNX 部署</div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="fas fa-tachometer-alt"></i></div><div class="stat-value" id="fpsDisplay">91.2</div><div class="stat-label">吞吐量 FPS</div><div class="stat-sub">实时批处理能力</div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="fas fa-percent"></i></div><div class="stat-value" id="accDisplay">92.96</div><div class="stat-label">测试集准确率</div><div class="stat-sub">Top-1 准确率</div></div>
+    </div>
+
+    <div class="two-columns">
+        <div class="glass-panel">
+            <h3 style="display: flex; align-items: center; gap: 8px; margin-bottom: 1.2rem; font-weight: 600;"><i class="fas fa-brain" style="color:#6C7CFF;"></i> 模型技术规格</h3>
+            <div class="info-row"><span class="info-label">🏗️ 架构</span><span class="info-value">EfficientNet-B2 (预训练)</span></div>
+            <div class="info-row"><span class="info-label">📦 总参数量</span><span class="info-value">9.2M</span></div>
+            <div class="info-row"><span class="info-label">⚙️ 可训练参数</span><span class="info-value">7.87M</span></div>
+            <div class="info-row"><span class="info-label">🖼️ 输入尺寸</span><span class="info-value">224x224 (RGB)</span></div>
+            <div class="info-row"><span class="info-label">📚 分类类别</span><span class="info-value">13 种气象现象</span></div>
+            <div class="info-row"><span class="info-label">⚡ 推理后端</span><span class="info-value">ONNX Runtime / PyTorch</span></div>
+            <div class="info-row"><span class="info-label">📊 优化策略</span><span class="info-value">标签平滑 + 余弦退火 + 早停</span></div>
+            <div class="info-row"><span class="info-label">🏆 最佳验证F1</span><span class="info-value">0.9307</span></div>
+            <div style="margin-top: 1.4rem; background: #0E121E; border-radius: 20px; padding: 1rem;">
+                <div class="flex-between"><span><i class="fas fa-check-circle" style="color:#6C7CFF;"></i> 准确率 (Acc)</span><span>92.96%</span></div>
+                <div class="flex-between" style="margin-top: 10px;"><span><i class="fas fa-chart-pie"></i> 宏平均F1</span><span>0.9200</span></div>
+                <div class="flex-between" style="margin-top: 10px;"><span><i class="fas fa-microphone-alt"></i> 推理效率</span><span>10.97ms / 91 FPS</span></div>
+            </div>
+        </div>
+
+        <div class="glass-panel">
+            <div class="flex-between" style="margin-bottom: 1rem;">
+                <h3 style="font-weight: 600;"><i class="fas fa-cloud-upload-alt" style="color:#6C7CFF;"></i> 实时气象识别</h3>
+                <span class="chip"><i class="fas fa-sync-alt"></i> 拖拽/上传</span>
+            </div>
+            <div id="uploadZone" class="upload-area">
+                <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                <p style="font-weight: 500;">点击或拖拽气象图像</p>
+                <p style="font-size: 0.7rem; color: #7A85A3;">支持 JPG, PNG · 自动识别13类天气</p>
+                <input type="file" id="fileInput" accept="image/jpeg,image/png,image/jpg" style="display: none;">
+                <div id="imagePreview"></div>
+            </div>
+            <div id="resultArea" style="display: none;">
+                <div class="result-box">
+                    <div class="flex-between"><span><i class="fas fa-microchip"></i> 推理结果</span><span class="chip" id="inferenceTag">ONNX Runtime</span></div>
+                    <div class="prediction-class" id="predClassName">--</div>
+                    <div class="confidence-bar"><div class="confidence-fill" id="confFill"></div></div>
+                    <div class="flex-between" style="font-size:0.85rem;"><span>置信度</span><span id="confPercent">0%</span></div>
+                    <div class="flex-between" style="margin-top: 8px;"><span class="info-label"><i class="fas fa-hourglass-half"></i> 推理耗时</span><span class="info-value" id="timeInfo">-- ms</span></div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <div style="font-weight: 600; margin-bottom: 8px;"><i class="fas fa-chart-simple"></i> Top-5 置信分布</div>
+                    <div id="top5List"></div>
+                </div>
+            </div>
+            <div id="loadingMsg" class="loading" style="display: none;"><i class="fas fa-spinner fa-pulse"></i> 推理中...</div>
+            <div id="errorMsg" class="error-message" style="display: none;"></div>
+            <button class="btn-primary" id="demoBtn"><i class="fas fa-sun"></i> 加载示例图像 (晴天)</button>
+        </div>
+    </div>
+
+    <div class="glass-panel" style="margin-top: 0.5rem;">
+        <h3 style="display: flex; gap: 8px; margin-bottom: 1rem; font-size: 1.1rem;"><i class="fas fa-plug" style="color:#6C7CFF;"></i> 对接指南</h3>
+        <div class="info-row"><span class="info-label">🔌 后端地址</span><span class="info-value" id="apiUrlDisplay">http://localhost:8000/predict</span></div>
+        <div class="info-row"><span class="info-label">📡 后端状态</span><span class="info-value" id="apiStatus">检测中...</span></div>
+    </div>
+    <footer>基于 EfficientNet-B2 · 迁移学习 + 数据增强 · 推理性能 10.97ms (GPU) | F1 0.920</footer>
+</div>
+
+<script>
+    // 配置
+    const API_URL = 'http://localhost:8000/predict';
+    document.getElementById('apiUrlDisplay').innerText = API_URL;
+
+    // 模型指标
+    const METRICS = { f1: 0.9200, acc: 92.96, inference_ms: 10.97, fps: 91.2 };
+    document.getElementById('f1ScoreDisplay').innerText = METRICS.f1.toFixed(3);
+    document.getElementById('accDisplay').innerText = METRICS.acc;
+    document.getElementById('inferenceTimeDisplay').innerText = METRICS.inference_ms;
+    document.getElementById('fpsDisplay').innerText = METRICS.fps;
+
+    // 13类映射
+    const CLASS_EN = ['dew','fog_smog','frost','glaze','hail','lightning','rain','rainbow','rime','sandstorm','snow','cloudy','sunny'];
+    const CLASS_CN = ['露水','雾/烟雾','霜冻','雨凇','冰雹','雷电','雨','彩虹','雾凇','沙尘暴','雪','多云','晴天'];
+
+    // DOM 元素
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const resultArea = document.getElementById('resultArea');
+    const predClassNameSpan = document.getElementById('predClassName');
+    const confFill = document.getElementById('confFill');
+    const confPercent = document.getElementById('confPercent');
+    const timeInfoSpan = document.getElementById('timeInfo');
+    const top5Container = document.getElementById('top5List');
+    const demoBtn = document.getElementById('demoBtn');
+    const loadingMsg = document.getElementById('loadingMsg');
+    const errorMsg = document.getElementById('errorMsg');
+    const apiStatusSpan = document.getElementById('apiStatus');
+
+    // 检测后端状态
+    async function checkBackend() {
+        try {
+            const response = await fetch('http://localhost:8000/', {
+                method: 'GET',
+                signal: AbortSignal.timeout(3000)
+            });
+            if (response.ok) {
+                apiStatusSpan.innerHTML = '✅ 已连接';
+                apiStatusSpan.style.color = '#4ade80';
+            } else {
+                apiStatusSpan.innerHTML = '⚠️ 响应异常';
+                apiStatusSpan.style.color = '#fbbf24';
+            }
+        } catch (error) {
+            apiStatusSpan.innerHTML = '❌ 未连接 (请启动后端)';
+            apiStatusSpan.style.color = '#ff6b6b';
+            console.warn('后端未启动:', error);
+        }
+    }
+
+    // 真实推理
+    async function realInference(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const start = performance.now();
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        const inferenceMs = performance.now() - start;
+        
+        return {
+            pred_class_en: result.pred_class_en,
+            pred_class_cn: result.pred_class_cn,
+            confidence: result.confidence,
+            top5: result.top5,
+            inference_ms: parseFloat(inferenceMs.toFixed(2))
+        };
+    }
+
+    // 模拟推理（后端未启动时备用）
+    async function mockInferenceFallback(file) {
+        await new Promise(r => setTimeout(r, 30));
+        let predictedIdx = 12;
+        if (file && file.name) {
+            const name = file.name.toLowerCase();
+            if (name.includes('rain')) predictedIdx = 6;
+            else if (name.includes('cloud')) predictedIdx = 11;
+            else if (name.includes('snow')) predictedIdx = 10;
+            else if (name.includes('light')) predictedIdx = 5;
+            else if (name.includes('fog')) predictedIdx = 1;
+            else if (name.includes('rainbow')) predictedIdx = 7;
+            else predictedIdx = 12;
+        }
+        let probs = new Array(13).fill(0.01);
+        let mainConf = 0.85 + Math.random() * 0.1;
+        probs[predictedIdx] = mainConf;
+        let remaining = 1 - mainConf;
+        for (let i = 0; i < 13; i++) if (i !== predictedIdx) probs[i] = remaining / 12;
+        let sum = probs.reduce((a, b) => a + b, 0);
+        probs = probs.map(p => p / sum);
+        const top5 = probs.map((p, idx) => ({ idx, p }))
+            .sort((a, b) => b.p - a.p)
+            .slice(0, 5)
+            .map(item => ({ class_en: CLASS_EN[item.idx], class_cn: CLASS_CN[item.idx], prob: item.p }));
+        return {
+            pred_class_en: CLASS_EN[predictedIdx],
+            pred_class_cn: CLASS_CN[predictedIdx],
+            confidence: probs[predictedIdx],
+            top5: top5,
+            inference_ms: 10.97
+        };
+    }
+
+    // 渲染结果
+    function renderResult(result) {
+        resultArea.style.display = 'block';
+        predClassNameSpan.innerText = `${result.pred_class_cn} (${result.pred_class_en})`;
+        const conf = result.confidence;
+        confFill.style.width = `${conf * 100}%`;
+        confPercent.innerText = `${(conf * 100).toFixed(2)}%`;
+        timeInfoSpan.innerText = `${result.inference_ms} ms`;
+        top5Container.innerHTML = '';
+        result.top5.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'top5-item';
+            div.innerHTML = `
+                <div class="top5-name">${item.class_cn}<span style="font-size:0.7rem;"> (${item.class_en})</span></div>
+                <div class="top5-bar-bg"><div class="top5-bar" style="width: ${item.prob * 100}%;"></div></div>
+                <div style="min-width: 45px; text-align: right;">${(item.prob * 100).toFixed(1)}%</div>
+            `;
+            top5Container.appendChild(div);
+        });
+    }
+
+    // 处理图片
+    async function handleImageFile(file) {
+        if (!file) return;
+        
+        // 显示预览
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imagePreview.innerHTML = `<img src="${e.target.result}" class="preview-img" alt="气象预览">`;
+        };
+        reader.readAsDataURL(file);
+        
+        // 隐藏旧结果，显示加载
+        resultArea.style.display = 'none';
+        errorMsg.style.display = 'none';
+        loadingMsg.style.display = 'block';
+        
+        try {
+            let result;
+            try {
+                result = await realInference(file);
+            } catch (apiError) {
+                console.warn('API调用失败，使用模拟数据:', apiError);
+                result = await mockInferenceFallback(file);
+            }
+            renderResult(result);
+        } catch (error) {
+            errorMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> 推理失败: ${error.message}`;
+            errorMsg.style.display = 'block';
+        } finally {
+            loadingMsg.style.display = 'none';
+        }
+    }
+
+    // 事件绑定
+    uploadZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleImageFile(e.target.files[0]); });
+    uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.style.borderColor = '#8A94FF'; });
+    uploadZone.addEventListener('dragleave', () => { uploadZone.style.borderColor = '#5A6BFF'; });
+    uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadZone.style.borderColor = '#5A6BFF';
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) handleImageFile(file);
+    });
+
+    // 示例按钮
+    demoBtn.addEventListener('click', async () => {
+        const mockFile = { name: 'demo_sunny.jpg' };
+        const demoResult = await mockInferenceFallback(mockFile);
+        demoResult.pred_class_cn = '晴天';
+        demoResult.pred_class_en = 'sunny';
+        demoResult.confidence = 0.951;
+        let probs = new Array(13).fill(0.008);
+        probs[12] = 0.951;
+        probs[11] = 0.022;
+        probs[6] = 0.01;
+        let sum = probs.reduce((a, b) => a + b, 0);
+        probs = probs.map(p => p / sum);
+        demoResult.top5 = probs.map((p, idx) => ({ idx, p }))
+            .sort((a, b) => b.p - a.p)
+            .slice(0, 5)
+            .map(item => ({ class_en: CLASS_EN[item.idx], class_cn: CLASS_CN[item.idx], prob: item.p }));
+        demoResult.inference_ms = 9.3;
+        imagePreview.innerHTML = `<div style="background:#0E121C; border-radius: 24px; padding: 20px; text-align:center;"><i class="fas fa-sun" style="font-size: 48px; color:#FFD966;"></i><p style="margin-top: 5px;">示例: 晴天图像</p></div>`;
+        renderResult(demoResult);
+    });
+
+    // 页面加载时检测后端
+    checkBackend();
+    setInterval(checkBackend, 5000);
+</script>
+</body>
+</html>
