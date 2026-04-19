@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>气象图像识别系统前端界面</title>
+    <title>气象图像识别系统 | 智能气象感知</title>
 
     <!-- 网页图标 favicon -->
     <link rel="icon" type="image/svg+xml"
@@ -673,7 +673,7 @@
     <script>
         // ========== 配置 ==========
         const API_BASE_URL = 'https://sculptor-energy-badge.ngrok-free.dev';
-        const API_PREDICT_URL = `./app.html`;
+        const API_PREDICT_URL = `${API_BASE_URL}/predict`;  // 修复：加上 /predict
         const API_ROOT_URL = API_BASE_URL;
 
         const NGROK_HEADERS = {
@@ -763,13 +763,7 @@
                     inference_ms: parseFloat(inferenceMs.toFixed(2))
                 };
             } else {
-                return {
-                    pred_class_en: 'unknown',
-                    pred_class_cn: '未知',
-                    confidence: 0.5,
-                    top5: [],
-                    inference_ms: parseFloat(inferenceMs.toFixed(2))
-                };
+                throw new Error('返回结果无效');
             }
         }
 
@@ -829,10 +823,11 @@
         }
 
         // 处理图片
+        // 处理图片 - 调试版本
         async function handleImageFile(file) {
             if (!file) return;
 
-            // 显示预览（仅用于显示，不影响上传）
+            // 显示预览
             const reader = new FileReader();
             reader.onload = (e) => {
                 imagePreview.innerHTML = `<img src="${e.target.result}" class="preview-img" alt="气象预览">`;
@@ -843,20 +838,48 @@
             errorMsg.style.display = 'none';
             loadingMsg.style.display = 'block';
 
+            console.log('开始上传图片:', file.name);
+            console.log('请求地址:', API_PREDICT_URL);
+
             try {
-                let result;
-                try {
-                    result = await realInference(file);
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch(API_PREDICT_URL, {
+                    method: 'POST',
+                    headers: NGROK_HEADERS,
+                    body: formData
+                });
+
+                console.log('响应状态:', response.status);
+                console.log('响应状态文本:', response.statusText);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('响应错误内容:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
+                }
+
+                const result = await response.json();
+                console.log('解析后的结果:', result);
+
+                if (result.success === true) {
+                    const renderData = {
+                        pred_class_en: result.pred_class_en,
+                        pred_class_cn: result.pred_class_cn,
+                        confidence: result.confidence,
+                        top5: result.top5 || [],
+                        inference_ms: result.inference_ms || 10.97
+                    };
+                    console.log('准备渲染的数据:', renderData);
+                    renderResult(renderData);
                     apiStatusSpan.innerHTML = '✅ 已连接 (推理成功)';
                     apiStatusSpan.style.color = '#4ade80';
-                } catch (apiError) {
-                    console.warn('API调用失败，使用模拟数据:', apiError);
-                    result = await mockInferenceFallback(file);
-                    apiStatusSpan.innerHTML = '⚠️ 演示模式 (后端未响应)';
-                    apiStatusSpan.style.color = '#fbbf24';
+                } else {
+                    throw new Error('返回结果中 success 为 false');
                 }
-                renderResult(result);
             } catch (error) {
+                console.error('推理失败详情:', error);
                 errorMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> 推理失败: ${error.message}`;
                 errorMsg.style.display = 'block';
             } finally {
